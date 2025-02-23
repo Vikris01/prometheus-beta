@@ -1,5 +1,6 @@
 import logging
 import os
+import logging.handlers
 from typing import Optional, Union
 
 class KeystrokeLogger:
@@ -23,10 +24,10 @@ class KeystrokeLogger:
             log_level (int): Logging level (default: logging.INFO)
             mask_sensitive (bool): Mask potentially sensitive input (default: True)
         """
-        # Ensure log directory exists
+        # Resolve absolute path and ensure directory exists
         if log_file:
-            # Ensure the directory exists
-            os.makedirs(os.path.dirname(log_file) or os.getcwd(), exist_ok=True)
+            log_file = os.path.abspath(log_file)
+            os.makedirs(os.path.dirname(log_file), exist_ok=True)
         else:
             # Default log file in user's home directory
             default_log_dir = os.path.join(os.path.expanduser('~'), '.logs')
@@ -36,12 +37,19 @@ class KeystrokeLogger:
         # Ensure the log file exists
         open(log_file, 'a').close()
         
-        # Configure logging
-        logging.basicConfig(
-            filename=log_file, 
-            level=log_level, 
-            format='%(asctime)s - %(message)s'
-        )
+        # Create a file handler with more robust logging
+        file_handler = logging.FileHandler(log_file, mode='a')
+        file_handler.setLevel(log_level)
+        formatter = logging.Formatter('%(asctime)s - %(message)s')
+        file_handler.setFormatter(formatter)
+        
+        # Create a logger
+        self.logger = logging.getLogger(f'KeystrokeLogger_{log_file}')
+        self.logger.setLevel(log_level)
+        self.logger.addHandler(file_handler)
+        
+        # Prevent propagation to root logger to avoid duplicate logs
+        self.logger.propagate = False
         
         self.mask_sensitive = mask_sensitive
         self.log_file = log_file
@@ -66,13 +74,13 @@ class KeystrokeLogger:
         if self.mask_sensitive:
             if len(key_str) == 1 and key_str.isprintable():
                 # Log printable characters
-                logging.info(f"KEY: {key_str}")
+                self.logger.info(f"KEY: {key_str}")
             else:
                 # Log special keys with brackets
-                logging.info(f"KEY: [{key_str}]")
+                self.logger.info(f"KEY: [{key_str}]")
         else:
             # Log all keys without masking
-            logging.info(f"KEY: {key_str}")
+            self.logger.info(f"KEY: {key_str}")
     
     def log_input(self, input_string: str) -> None:
         """
@@ -90,6 +98,6 @@ class KeystrokeLogger:
         if self.mask_sensitive:
             # Mask potentially sensitive inputs
             masked_input = '*' * len(input_string)
-            logging.info(f"INPUT: {masked_input}")
+            self.logger.info(f"INPUT: {masked_input}")
         else:
-            logging.info(f"INPUT: {input_string}")
+            self.logger.info(f"INPUT: {input_string}")
