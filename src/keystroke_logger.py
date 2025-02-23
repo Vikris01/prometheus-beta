@@ -25,9 +25,16 @@ class KeystrokeLogger:
         """
         # Ensure log directory exists
         if log_file:
-            os.makedirs(os.path.dirname(log_file), exist_ok=True)
+            # Ensure the directory exists
+            os.makedirs(os.path.dirname(log_file) or os.getcwd(), exist_ok=True)
         else:
-            log_file = os.path.join(os.path.expanduser('~'), 'keystroke.log')
+            # Default log file in user's home directory
+            default_log_dir = os.path.join(os.path.expanduser('~'), '.logs')
+            os.makedirs(default_log_dir, exist_ok=True)
+            log_file = os.path.join(default_log_dir, 'keystroke.log')
+        
+        # Ensure the log file exists
+        open(log_file, 'a').close()
         
         # Configure logging
         logging.basicConfig(
@@ -37,6 +44,7 @@ class KeystrokeLogger:
         )
         
         self.mask_sensitive = mask_sensitive
+        self.log_file = log_file
     
     def log_keystroke(self, key: Union[str, int]) -> None:
         """
